@@ -76,6 +76,14 @@ local function findClosestEnemy(pos)
 	return closest
 end
 
+local function startDungeon()
+	local dungeonRemote = ReplicatedStorage:WaitForChild("StartDungeon", 9e9)
+	if dungeonRemote then
+		dungeonRemote:FireServer(true)
+	end
+end
+
+
 local function hoverAboveEnemy(character)
 	if not hoverController.currentEnemy or not isValidEnemy(hoverController.currentEnemy) then return false end
 
@@ -153,6 +161,7 @@ end
 
 local function startAutofarmLoop(player)
 	cleanUp()
+	startDungeon()
 	local character = player.Character or player.CharacterAdded:Wait()
 	if not character then return end
 
