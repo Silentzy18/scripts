@@ -13,7 +13,7 @@ window:Section("Autofarm Controls")
 local autofarm = false
 local hoverDistance = 10
 local healThreshold = 0.3 -- 30% by default
-local stuckTimeout = 5 -- seconds without enemy health change before reset
+local stuckTimeout = 10 -- seconds without enemy health change before reset
 
 window:Toggle("Auto Farm", {}, function(value)
 	autofarm = value
