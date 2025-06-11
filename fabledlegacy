@@ -178,7 +178,6 @@ end
 local function startAutofarmLoop(player)
 	cleanUp()
 	startDungeon()
-	AutoRetry()
 	local character = player.Character or player.CharacterAdded:Wait()
 	if not character then return end
 
@@ -188,6 +187,7 @@ local function startAutofarmLoop(player)
 	local spell = ReplicatedStorage:FindFirstChild("useSpell")
 
 local conn = RunService.Heartbeat:Connect(function()
+	AutoRetry()
 	if not autofarm then return end
 	if not swing or not spell then return end
 
