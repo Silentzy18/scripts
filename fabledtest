@@ -133,23 +133,32 @@ local function hoverAboveEnemy(character)
 	if not hoverController.currentEnemy or not isValidEnemy(hoverController.currentEnemy) then return false end
 
 	local root = character:FindFirstChild("HumanoidRootPart")
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	local enemyRoot = hoverController.currentEnemy:FindFirstChild("HumanoidRootPart")
-	if not root or not enemyRoot or not humanoid then return false end
-
-	humanoid.PlatformStand = true -- 🚫 disable ragdoll physics
+	if not root or not enemyRoot then return false end
 
 	local enemyPos = enemyRoot.Position
 	local enemyLook = enemyRoot.CFrame.LookVector.Unit
-
 	local offsetBehind = -5
 	local offsetAbove = hoverDistance
 	local offset = Vector3.new(0, offsetAbove, 0) + (enemyLook * offsetBehind)
 
-	character:PivotTo(CFrame.new(enemyPos + offset, enemyPos))
+	local targetCFrame = CFrame.new(enemyPos + offset, enemyPos)
+
+	-- Cancel previous tween if running
+	if hoverController.currentTween then
+		hoverController.currentTween:Cancel()
+	end
+
+	local tweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+	hoverController.currentTween = TweenService:Create(root, tweenInfo, {
+		CFrame = targetCFrame
+	})
+
+	hoverController.currentTween:Play()
 
 	return true
 end
+
 
 
 local function healthMonitor(character)
