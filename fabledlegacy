@@ -1,4 +1,4 @@
-slocal HttpService = game:GetService("HttpService")
+local HttpService = game:GetService("HttpService")
 local configFile = "autofarm_gui_config.json"
 
 local defaultConfig = {
