@@ -132,12 +132,18 @@ end
 local function hoverAboveEnemy(character)
 	if not hoverController.currentEnemy or not isValidEnemy(hoverController.currentEnemy) then return false end
 
-	local root = character:FindFirstChild("HumanoidRootPart")
+	-- Ensure PrimaryPart is set
+	if not character.PrimaryPart then
+		character.PrimaryPart = character:FindFirstChild("HumanoidRootPart")
+	end
+
+	local root = character.PrimaryPart
 	local enemyRoot = hoverController.currentEnemy:FindFirstChild("HumanoidRootPart")
 	if not root or not enemyRoot then return false end
 
 	local enemyPos = enemyRoot.Position
 	local enemyLook = enemyRoot.CFrame.LookVector.Unit
+
 	local offsetBehind = -5
 	local offsetAbove = hoverDistance
 	local offset = Vector3.new(0, offsetAbove, 0) + (enemyLook * offsetBehind)
@@ -149,9 +155,13 @@ local function hoverAboveEnemy(character)
 		hoverController.currentTween:Cancel()
 	end
 
+	-- Compute how to move the PrimaryPart such that the whole model moves to targetCFrame
+	local offset = root.CFrame:ToObjectSpace(character:GetPivot())
+	local adjustedTarget = targetCFrame * offset
+
 	local tweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
 	hoverController.currentTween = TweenService:Create(root, tweenInfo, {
-		CFrame = targetCFrame
+		CFrame = adjustedTarget
 	})
 
 	hoverController.currentTween:Play()
