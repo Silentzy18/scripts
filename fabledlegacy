@@ -4,7 +4,8 @@ local configFile = "autofarm_gui_config.json"
 local defaultConfig = {
 	autofarm = false,
 	hoverDistance = 10,
-	healThreshold = 0.3
+	healThreshold = 0.3,
+	autoResetOnNoDamage = false
 }
 
 -- Load config if it exists, else use defaults
@@ -14,6 +15,11 @@ local function loadConfig()
 			return HttpService:JSONDecode(readfile(configFile))
 		end)
 		if success and type(data) == "table" then
+			for key, value in pairs(defaultConfig) do
+				if data[key] == nil then
+					data[key] = value
+				end
+			end
 			return data
 		end
 	end
@@ -27,8 +33,6 @@ end
 
 local config = loadConfig()
 
-
-
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -41,13 +45,20 @@ local window = library:CreateWindow("Credit: Silent")
 -- Autofarm Controls UI
 window:Section("Autofarm Controls")
 
-local autofarm = false
-local hoverDistance = 10
-local healThreshold = 0.3 -- 30% by default
+local autofarm = config.autofarm
+local hoverDistance = config.hoverDistance
+local healThreshold = config.healThreshold
+local autoResetOnNoDamage = config.autoResetOnNoDamage
 
 window:Toggle("Auto Farm", {default = config.autofarm}, function(value)
 	autofarm = value
 	config.autofarm = value
+	saveConfig(config)
+end)
+
+window:Toggle("Auto Reset on No Damage", {default = config.autoResetOnNoDamage}, function(value)
+	autoResetOnNoDamage = value
+	config.autoResetOnNoDamage = value
 	saveConfig(config)
 end)
 
@@ -70,7 +81,6 @@ window:Slider("Heal HP (%)", {
 	config.healThreshold = healThreshold
 	saveConfig(config)
 end)
-
 
 -- Autofarm Logic
 local hoverController = {
@@ -139,7 +149,6 @@ local function hoverAboveEnemy(character)
 	return true
 end
 
-
 local function healthMonitor(character)
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return end
@@ -174,7 +183,6 @@ local function AutoRetry()
 	end)
 end
 
-
 local function startAutofarmLoop(player)
 	cleanUp()
 	startDungeon()
@@ -185,39 +193,48 @@ local function startAutofarmLoop(player)
 
 	local swing = ReplicatedStorage:FindFirstChild("Swing")
 	local spell = ReplicatedStorage:FindFirstChild("useSpell")
+	local lastDamageTime = tick()
 
-local conn = RunService.Heartbeat:Connect(function()
-	AutoRetry()
-	if not autofarm then return end
-	if not swing or not spell then return end
+	local conn = RunService.Heartbeat:Connect(function()
+		AutoRetry()
+		if not autofarm then return end
+		if not swing or not spell then return end
 
-	swing:FireServer()
-	spell:FireServer("Q")
-	spell:FireServer("E")
+		swing:FireServer()
+		spell:FireServer("Q")
+		spell:FireServer("E")
 
-	if not hoverController.currentEnemy or not isValidEnemy(hoverController.currentEnemy) then
-		hoverController.currentEnemy = findClosestEnemy(character:GetPivot().Position)
-		lastHealth = nil
-		lastHealthCheckTime = tick()
-	end
+		if not hoverController.currentEnemy or not isValidEnemy(hoverController.currentEnemy) then
+			hoverController.currentEnemy = findClosestEnemy(character:GetPivot().Position)
+			lastHealth = nil
+			lastHealthCheckTime = tick()
+		end
 
-	if hoverController.currentEnemy then
-		hoverAboveEnemy(character)
+		if hoverController.currentEnemy then
+			hoverAboveEnemy(character)
 
-		local humanoid = hoverController.currentEnemy:FindFirstChildOfClass("Humanoid")
-		if humanoid then
-			local currentTime = tick()
-			if lastHealth == nil then
-				lastHealth = humanoid.Health
-				lastHealthCheckTime = currentTime
-			elseif humanoid.Health < lastHealth then
-				lastHealth = humanoid.Health
-				lastHealthCheckTime = currentTime
+			local humanoid = hoverController.currentEnemy:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				local currentTime = tick()
+				if lastHealth == nil then
+					lastHealth = humanoid.Health
+					lastHealthCheckTime = currentTime
+				elseif humanoid.Health < lastHealth then
+					lastHealth = humanoid.Health
+					lastHealthCheckTime = currentTime
+					lastDamageTime = currentTime
+				end
 			end
 		end
-	end
-end)
 
+		if autoResetOnNoDamage and tick() - lastDamageTime > 10 then
+			local humanoid = character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid.Health = 0
+				lastDamageTime = tick()
+			end
+		end
+	end)
 
 	table.insert(hoverController.connections, conn)
 end
