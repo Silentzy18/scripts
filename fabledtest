@@ -133,8 +133,11 @@ local function hoverAboveEnemy(character)
 	if not hoverController.currentEnemy or not isValidEnemy(hoverController.currentEnemy) then return false end
 
 	local root = character:FindFirstChild("HumanoidRootPart")
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	local enemyRoot = hoverController.currentEnemy:FindFirstChild("HumanoidRootPart")
-	if not root or not enemyRoot then return false end
+	if not root or not enemyRoot or not humanoid then return false end
+
+	humanoid.PlatformStand = true -- 🚫 disable ragdoll physics
 
 	local enemyPos = enemyRoot.Position
 	local enemyLook = enemyRoot.CFrame.LookVector.Unit
@@ -144,8 +147,10 @@ local function hoverAboveEnemy(character)
 	local offset = Vector3.new(0, offsetAbove, 0) + (enemyLook * offsetBehind)
 
 	character:PivotTo(CFrame.new(enemyPos + offset, enemyPos))
+
 	return true
 end
+
 
 local function healthMonitor(character)
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
