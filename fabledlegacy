@@ -1,3 +1,34 @@
+local HttpService = game:GetService("HttpService")
+local configFile = "autofarm_gui_config.json"
+
+local defaultConfig = {
+	autofarm = false,
+	hoverDistance = 10,
+	healThreshold = 0.3
+}
+
+-- Load config if it exists, else use defaults
+local function loadConfig()
+	if isfile(configFile) then
+		local success, data = pcall(function()
+			return HttpService:JSONDecode(readfile(configFile))
+		end)
+		if success and type(data) == "table" then
+			return data
+		end
+	end
+	return defaultConfig
+end
+
+-- Save config to file
+local function saveConfig(config)
+	writefile(configFile, HttpService:JSONEncode(config))
+end
+
+local config = loadConfig()
+
+
+
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -15,25 +46,32 @@ local hoverDistance = 10
 local healThreshold = 0.3 -- 30% by default
 local stuckTimeout = 10 -- seconds without enemy health change before reset
 
-window:Toggle("Auto Farm", {}, function(value)
+window:Toggle("Auto Farm", {default = config.autofarm}, function(value)
 	autofarm = value
+	config.autofarm = value
+	saveConfig(config)
 end)
 
 window:Slider("Hover Distance", {
 	min = 5,
 	max = 50,
-	default = 10,
+	default = config.hoverDistance,
 }, function(value)
 	hoverDistance = value
+	config.hoverDistance = value
+	saveConfig(config)
 end)
 
 window:Slider("Heal HP (%)", {
 	min = 10,
 	max = 100,
-	default = 30,
+	default = config.healThreshold * 100,
 }, function(value)
 	healThreshold = value / 100
+	config.healThreshold = healThreshold
+	saveConfig(config)
 end)
+
 
 -- Autofarm Logic
 local hoverController = {
@@ -83,7 +121,6 @@ local function startDungeon()
 	end
 end
 
-
 local function hoverAboveEnemy(character)
 	if not hoverController.currentEnemy or not isValidEnemy(hoverController.currentEnemy) then return false end
 
@@ -94,53 +131,15 @@ local function hoverAboveEnemy(character)
 	local enemyPos = enemyRoot.Position
 	local enemyLook = enemyRoot.CFrame.LookVector.Unit
 
-	local offsetBehind = -enemyLook * 5
-	local offsetAbove = Vector3.new(0, hoverDistance, 0)
-	local targetPos = enemyPos + offsetBehind + offsetAbove
-	local lookAtCFrame = CFrame.new(targetPos, enemyPos)
+	local offsetBehind = -5
+	local offsetAbove = hoverDistance
+	local offset = Vector3.new(0, offsetAbove, 0) + (enemyLook * offsetBehind)
 
-	if (targetPos - root.Position).Magnitude > 1 then
-		if hoverController.currentTween then
-			hoverController.currentTween:Cancel()
-		end
-
-		local dummy = Instance.new("Part")
-		dummy.Anchored = true
-		dummy.CanCollide = false
-		dummy.Transparency = 1
-		dummy.Size = Vector3.new(0.1, 0.1, 0.1)
-		dummy.CFrame = character:GetPivot()
-		dummy.Parent = workspace
-
-		local tween = TweenService:Create(dummy, TweenInfo.new(0.5, Enum.EasingStyle.Quad), { CFrame = lookAtCFrame })
-
-		local humanoid = character:FindFirstChildOfClass("Humanoid")
-		if humanoid then
-			humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-		end
-
-		local conn
-		conn = RunService.Heartbeat:Connect(function()
-			if dummy and character and character.Parent then
-				character:PivotTo(dummy.CFrame)
-			end
-		end)
-
-		table.insert(hoverController.connections, conn)
-		tween.Completed:Connect(function()
-			dummy:Destroy()
-			conn:Disconnect()
-			if humanoid then
-				humanoid:ChangeState(Enum.HumanoidStateType.Running)
-			end
-		end)
-
-		hoverController.currentTween = tween
-		tween:Play()
-	end
+	root.CFrame = CFrame.new(enemyPos + offset, enemyPos)
 
 	return true
 end
+
 
 local function healthMonitor(character)
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
@@ -170,45 +169,37 @@ local function startAutofarmLoop(player)
 	local swing = ReplicatedStorage:FindFirstChild("Swing")
 	local spell = ReplicatedStorage:FindFirstChild("useSpell")
 
-	local conn = RunService.Heartbeat:Connect(function()
-		if not autofarm then return end
-		if not swing or not spell then return end
+local conn = RunService.Heartbeat:Connect(function()
+	if not autofarm then return end
+	if not swing or not spell then return end
 
-		swing:FireServer()
-		spell:FireServer("Q")
-		spell:FireServer("E")
+	swing:FireServer()
+	spell:FireServer("Q")
+	spell:FireServer("E")
 
-		if not hoverController.currentEnemy or not isValidEnemy(hoverController.currentEnemy) then
-			hoverController.currentEnemy = findClosestEnemy(character:GetPivot().Position)
-			lastHealth = nil
-			lastHealthCheckTime = tick()
-		end
+	if not hoverController.currentEnemy or not isValidEnemy(hoverController.currentEnemy) then
+		hoverController.currentEnemy = findClosestEnemy(character:GetPivot().Position)
+		lastHealth = nil
+		lastHealthCheckTime = tick()
+	end
 
-		if hoverController.currentEnemy then
-			hoverAboveEnemy(character)
+	if hoverController.currentEnemy then
+		hoverAboveEnemy(character)
 
-			local humanoid = hoverController.currentEnemy:FindFirstChildOfClass("Humanoid")
-			if humanoid then
-				local currentTime = tick()
-				if lastHealth == nil then
-					lastHealth = humanoid.Health
-					lastHealthCheckTime = currentTime
-				elseif humanoid.Health < lastHealth then
-					lastHealth = humanoid.Health
-					lastHealthCheckTime = currentTime
-				elseif currentTime - lastHealthCheckTime >= stuckTimeout then
-					-- Enemy not taking damage, reset character
-					local root = character:FindFirstChild("HumanoidRootPart")
-					if root then
-						root.CFrame = root.CFrame + Vector3.new(0, 1000, 0)
-					end
-					character:BreakJoints()
-					lastHealth = nil
-					lastHealthCheckTime = currentTime
-				end
+		local humanoid = hoverController.currentEnemy:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			local currentTime = tick()
+			if lastHealth == nil then
+				lastHealth = humanoid.Health
+				lastHealthCheckTime = currentTime
+			elseif humanoid.Health < lastHealth then
+				lastHealth = humanoid.Health
+				lastHealthCheckTime = currentTime
 			end
 		end
-	end)
+	end
+end)
+
 
 	table.insert(hoverController.connections, conn)
 end
