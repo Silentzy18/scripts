@@ -157,9 +157,28 @@ local function healthMonitor(character)
 	end)
 end
 
+local function AutoRetry()
+	task.spawn(function()
+		local voteRemote
+		repeat
+			voteRemote = ReplicatedStorage:FindFirstChild("voteRemote")
+			task.wait(1)
+		until voteRemote
+
+		while true do
+			pcall(function()
+				voteRemote:FireServer("repeat")
+			end)
+			task.wait(2)
+		end
+	end)
+end
+
+
 local function startAutofarmLoop(player)
 	cleanUp()
 	startDungeon()
+	AutoRetry()
 	local character = player.Character or player.CharacterAdded:Wait()
 	if not character then return end
 
