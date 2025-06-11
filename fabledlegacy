@@ -1,4 +1,4 @@
-local HttpService = game:GetService("HttpService")
+slocal HttpService = game:GetService("HttpService")
 local configFile = "autofarm_gui_config.json"
 
 local defaultConfig = {
@@ -44,7 +44,6 @@ window:Section("Autofarm Controls")
 local autofarm = false
 local hoverDistance = 10
 local healThreshold = 0.3 -- 30% by default
-local stuckTimeout = 10 -- seconds without enemy health change before reset
 
 window:Toggle("Auto Farm", {default = config.autofarm}, function(value)
 	autofarm = value
