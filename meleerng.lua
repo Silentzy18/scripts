@@ -1097,16 +1097,14 @@ do
     local function syncMeleeRejoinFlag() _G.MeleeRNG_AutoRejoin=states.autoReExec end
     syncMeleeRejoinFlag()
     pcall(function()
-        LP.OnTeleport:Connect(function(teleportState)
-            if teleportState ~= Enum.TeleportState.None then
-                syncMeleeRejoinFlag()
-                if queue_on_teleport and states.autoReExec then
-                    pcall(function()
-                        queue_on_teleport('loadstring(game:HttpGet("'..REEXEC_URL..'",true))()')
-                    end)
-                end
-            end
+LP.OnTeleport:Connect(function(teleportState)
+    syncMeleeRejoinFlag()
+    if queue_on_teleport and states.autoReExec then
+        pcall(function()
+            queue_on_teleport('loadstring(game:HttpGet("'..REEXEC_URL..'",true))()')
         end)
+    end
+end)
     end)
     local function armQueue()
         pcall(function()
