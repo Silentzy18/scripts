@@ -6,7 +6,7 @@
 -- FIX 5: Enum.TeleportState.RequestedByServer → ~= Enum.TeleportState.None
 
 local NEXUSLIB_URL = "https://raw.githubusercontent.com/headshot7535-png/Nexuslib/main/Nexuslib"
-local SCRIPT_URL   = "https://raw.githubusercontent.com/headshot7535-png/Untitled-Melee-RNG/main/Untitled%20Melee%20RNG"
+local SCRIPT_URL = "https://raw.githubusercontent.com/Silentzy18/scripts/refs/heads/main/meleerng.lua"
 
 local Lib
 if readfile and pcall then
